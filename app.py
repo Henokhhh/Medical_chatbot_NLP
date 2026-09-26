@@ -63,59 +63,60 @@ st.markdown(f"""
     --accent: {ACCENT}; --navy: {NAVY}; --green: {GREEN}; --amber: {AMBER};
 }}
 
-.stApp {{ background: var(--paper); }}
-html, body, [class*="css"] {{ font-family: 'IBM Plex Sans', sans-serif; color: var(--ink); }}
+.stApp {{ background: var(--paper); font-family: 'IBM Plex Sans', sans-serif; color: var(--ink); }}
 
-.block-container {{ max-width: 900px; padding-top: 1.6rem; }}
+.block-container {{ max-width: 820px; padding-top: 3rem; }}
 
 /* ---------- Header ---------- */
-.mf-header {{ border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 6px; }}
-.mf-wordmark {{ font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 30px;
-                display: flex; align-items: center; gap: 10px; }}
-.mf-mark {{ width: 11px; height: 11px; background: var(--accent); display: inline-block; flex: none; }}
-.mf-tagline {{ font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--muted);
-               margin-top: 4px; letter-spacing: .2px; }}
+.mf-header {{ border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 4px; }}
+.mf-wordmark {{ font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 24px; line-height: 1.3;
+                display: flex; align-items: center; gap: 9px; }}
+.mf-mark {{ width: 10px; height: 10px; background: var(--accent); display: inline-block; flex: none; }}
+.mf-tagline {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
+               margin-top: 3px; letter-spacing: .2px; }}
 
 /* ---------- Vitals row ---------- */
-.mf-vitals {{ display: flex; gap: 28px; border-top: 1px solid var(--line);
-              border-bottom: 1px solid var(--line); padding: 10px 0; margin: 14px 0 18px; flex-wrap: wrap; }}
-.mf-vital .label {{ font-size: 11.5px; color: var(--muted); }}
-.mf-vital .value {{ font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; }}
+.mf-vitals {{ display: flex; gap: 24px; border-top: 1px solid var(--line);
+              border-bottom: 1px solid var(--line); padding: 8px 0; margin: 12px 0 16px; flex-wrap: wrap; }}
+.mf-vital .label {{ font-size: 11px; color: var(--muted); }}
+.mf-vital .value {{ font-family: 'IBM Plex Mono', monospace; font-size: 13.5px; font-weight: 500; }}
 
 /* ---------- Disclaimer ---------- */
-.mf-disclaimer {{ font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--line);
-                   padding: 4px 0 4px 10px; margin-bottom: 20px; }}
+.mf-disclaimer {{ font-size: 12px; color: var(--muted); border-left: 2px solid var(--line);
+                   padding: 3px 0 3px 10px; margin-bottom: 16px; }}
 
 /* ---------- Example chips (st.button) ---------- */
 div[data-testid="stHorizontalBlock"] .stButton > button {{
     background: transparent; border: 1px solid var(--line); border-radius: 3px;
-    color: var(--ink); font-size: 13px; padding: 6px 10px; width: 100%; text-align: left;
-    box-shadow: none;
+    color: var(--ink); font-size: 12.5px; padding: 5px 9px; width: 100%; text-align: left;
+    box-shadow: none; min-height: 0;
 }}
 div[data-testid="stHorizontalBlock"] .stButton > button:hover {{ border-color: var(--navy); color: var(--navy); }}
 
 /* ---------- Chart entries (Q/A) ---------- */
-.mf-entry {{ margin-bottom: 22px; }}
-.mf-row {{ display: flex; gap: 12px; padding: 9px 0 9px 12px; border-left: 3px solid transparent; }}
+.mf-entry {{ margin-bottom: 14px; }}
+.mf-row {{ display: flex; gap: 10px; padding: 6px 0 6px 10px; border-left: 3px solid transparent; }}
 .mf-row.user {{ border-color: var(--navy); }}
 .mf-row.bot {{ border-color: var(--green); }}
 .mf-row.bot.low {{ border-color: var(--amber); }}
-.mf-tag {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
-           flex: none; padding-top: 3px; min-width: 26px; }}
+.mf-tag {{ font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
+           flex: none; padding-top: 2px; min-width: 22px; }}
 .mf-body {{ flex: 1; }}
-.mf-q-text {{ font-size: 15px; }}
-.mf-a-text {{ font-family: 'IBM Plex Serif', serif; font-size: 15.5px; line-height: 1.65; white-space: pre-wrap; }}
-.mf-rule {{ border: none; border-top: 1px dashed var(--line); margin: 8px 0 8px 38px; }}
-.mf-meta {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
-            margin: 8px 0 0 0; display: flex; gap: 16px; flex-wrap: wrap; }}
+.mf-q-text {{ font-size: 13.5px; }}
+.mf-a-text {{ font-family: 'IBM Plex Serif', serif; font-size: 14px; line-height: 1.55; white-space: pre-wrap; }}
+.mf-rule {{ border: none; border-top: 1px dashed var(--line); margin: 4px 0 4px 32px; }}
+.mf-meta {{ font-family: 'IBM Plex Mono', monospace; font-size: 11px; color: var(--muted);
+            margin: 6px 0 0 0; display: flex; gap: 14px; flex-wrap: wrap; }}
 .mf-meta a {{ color: var(--navy); }}
-.mf-caution {{ font-size: 13px; color: var(--amber); margin-top: 4px; }}
+.mf-caution {{ font-size: 12px; color: var(--amber); margin-top: 3px; }}
 
 /* ---------- Sidebar ---------- */
 section[data-testid="stSidebar"] {{ background: #ECEFE9; border-right: 1px solid var(--line); }}
+section[data-testid="stSidebar"] * {{ font-size: 13px; }}
 
 /* ---------- Chat input ---------- */
 [data-testid="stChatInput"] {{ border-top: 1px solid var(--line); }}
+[data-testid="stChatInput"] textarea {{ font-size: 14px; }}
 </style>
 """, unsafe_allow_html=True)
 
