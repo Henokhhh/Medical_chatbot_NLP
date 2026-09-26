@@ -7,6 +7,8 @@ di atas dataset FAQ medis, lalu menampilkannya sebagai antarmuka chat.
 """
 
 import re
+from html import escape
+
 import numpy as np
 import pandas as pd
 import streamlit as st
@@ -18,9 +20,9 @@ from sklearn.metrics.pairwise import cosine_similarity
 # KONFIGURASI HALAMAN
 # ----------------------------------------------------------------------
 st.set_page_config(
-    page_title="MedFAQ Chatbot",
+    page_title="MedFAQ — Chart-style medical FAQ retrieval",
     page_icon="🩺",
-    layout="centered",
+    layout="wide",
 )
 
 DATA_PATH = Path(__file__).parent / "medical_chatbot_dataset.csv"
@@ -39,6 +41,100 @@ INTENT_KEYWORDS = {
     "research": ["research", "clinical trial", "clinical trials", "studies"],
     "information": ["what is", "what are", "define", "definition", "information about"],
 }
+
+# ----------------------------------------------------------------------
+# DESAIN — palet "chart klinis": kertas rekam medis + tinta + satu aksen
+# ----------------------------------------------------------------------
+PAPER = "#F2F4EF"
+INK = "#1B211D"
+MUTED_INK = "#5B6660"
+LINE = "#D7DDD4"
+ACCENT = "#A13342"     # merah klinis — dipakai untuk wordmark & fokus saja
+NAVY = "#223A5E"        # entri pertanyaan pengguna
+GREEN = "#3F6B52"       # entri jawaban / status normal
+AMBER = "#8F5E10"       # peringatan skor rendah
+
+st.markdown(f"""
+<style>
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Serif:wght@400;600&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+:root {{
+    --paper: {PAPER}; --ink: {INK}; --muted: {MUTED_INK}; --line: {LINE};
+    --accent: {ACCENT}; --navy: {NAVY}; --green: {GREEN}; --amber: {AMBER};
+}}
+
+.stApp {{ background: var(--paper); }}
+html, body, [class*="css"] {{ font-family: 'IBM Plex Sans', sans-serif; color: var(--ink); }}
+
+.block-container {{ max-width: 900px; padding-top: 1.6rem; }}
+
+/* ---------- Header ---------- */
+.mf-header {{ border-bottom: 1px solid var(--line); padding-bottom: 14px; margin-bottom: 6px; }}
+.mf-wordmark {{ font-family: 'IBM Plex Serif', serif; font-weight: 600; font-size: 30px;
+                display: flex; align-items: center; gap: 10px; }}
+.mf-mark {{ width: 11px; height: 11px; background: var(--accent); display: inline-block; flex: none; }}
+.mf-tagline {{ font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--muted);
+               margin-top: 4px; letter-spacing: .2px; }}
+
+/* ---------- Vitals row ---------- */
+.mf-vitals {{ display: flex; gap: 28px; border-top: 1px solid var(--line);
+              border-bottom: 1px solid var(--line); padding: 10px 0; margin: 14px 0 18px; flex-wrap: wrap; }}
+.mf-vital .label {{ font-size: 11.5px; color: var(--muted); }}
+.mf-vital .value {{ font-family: 'IBM Plex Mono', monospace; font-size: 15px; font-weight: 500; }}
+
+/* ---------- Disclaimer ---------- */
+.mf-disclaimer {{ font-size: 12.5px; color: var(--muted); border-left: 2px solid var(--line);
+                   padding: 4px 0 4px 10px; margin-bottom: 20px; }}
+
+/* ---------- Example chips (st.button) ---------- */
+div[data-testid="stHorizontalBlock"] .stButton > button {{
+    background: transparent; border: 1px solid var(--line); border-radius: 3px;
+    color: var(--ink); font-size: 13px; padding: 6px 10px; width: 100%; text-align: left;
+    box-shadow: none;
+}}
+div[data-testid="stHorizontalBlock"] .stButton > button:hover {{ border-color: var(--navy); color: var(--navy); }}
+
+/* ---------- Chart entries (Q/A) ---------- */
+.mf-entry {{ margin-bottom: 22px; }}
+.mf-row {{ display: flex; gap: 12px; padding: 9px 0 9px 12px; border-left: 3px solid transparent; }}
+.mf-row.user {{ border-color: var(--navy); }}
+.mf-row.bot {{ border-color: var(--green); }}
+.mf-row.bot.low {{ border-color: var(--amber); }}
+.mf-tag {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
+           flex: none; padding-top: 3px; min-width: 26px; }}
+.mf-body {{ flex: 1; }}
+.mf-q-text {{ font-size: 15px; }}
+.mf-a-text {{ font-family: 'IBM Plex Serif', serif; font-size: 15.5px; line-height: 1.65; white-space: pre-wrap; }}
+.mf-rule {{ border: none; border-top: 1px dashed var(--line); margin: 8px 0 8px 38px; }}
+.mf-meta {{ font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--muted);
+            margin: 8px 0 0 0; display: flex; gap: 16px; flex-wrap: wrap; }}
+.mf-meta a {{ color: var(--navy); }}
+.mf-caution {{ font-size: 13px; color: var(--amber); margin-top: 4px; }}
+
+/* ---------- Sidebar ---------- */
+section[data-testid="stSidebar"] {{ background: #ECEFE9; border-right: 1px solid var(--line); }}
+
+/* ---------- Chat input ---------- */
+[data-testid="stChatInput"] {{ border-top: 1px solid var(--line); }}
+</style>
+""", unsafe_allow_html=True)
+
+
+def entry_html(turn_no: int, question: str, is_low: bool, body_html: str) -> str:
+    row_class = "bot low" if is_low else "bot"
+    return f"""
+    <div class="mf-entry">
+        <div class="mf-row user">
+            <div class="mf-tag">Q{turn_no}</div>
+            <div class="mf-body mf-q-text">{escape(question)}</div>
+        </div>
+        <hr class="mf-rule"/>
+        <div class="mf-row {row_class}">
+            <div class="mf-tag">A{turn_no}</div>
+            <div class="mf-body">{body_html}</div>
+        </div>
+    </div>
+    """
 
 
 # ----------------------------------------------------------------------
@@ -165,23 +261,23 @@ def retrieve(query, df, word_vectorizer, char_vectorizer, word_matrix, char_matr
 # SIDEBAR
 # ----------------------------------------------------------------------
 with st.sidebar:
-    st.header("⚙️ Pengaturan")
+    st.markdown("**Pengaturan pencarian**")
     use_sbert_toggle = st.checkbox(
-        "Aktifkan Sentence-BERT (semantic search)",
+        "Sentence-BERT (semantic search)",
         value=False,
-        help="Lebih akurat tapi lebih berat/lambat saat load pertama kali. "
+        help="Lebih akurat tapi lebih berat/lambat saat pertama kali dimuat. "
              "Jika mati, sistem memakai TF-IDF (word + character n-gram) saja.",
     )
     threshold = st.slider(
         "Ambang batas skor minimum",
         min_value=0.0, max_value=0.6, value=DEFAULT_THRESHOLD, step=0.01,
-        help="Jika skor tertinggi di bawah nilai ini, chatbot akan bilang tidak menemukan jawaban relevan.",
+        help="Jika skor tertinggi di bawah nilai ini, chatbot mengaku tidak yakin.",
     )
-    top_k = st.slider("Jumlah kandidat jawaban ditampilkan", 1, 5, 3)
+    top_k = st.slider("Jumlah kandidat jawaban", 1, 5, 3)
 
     st.markdown("---")
-    if st.button("🗑️ Bersihkan riwayat chat"):
-        st.session_state.messages = []
+    if st.button("Bersihkan riwayat"):
+        st.session_state.turns = []
         st.rerun()
 
 # ----------------------------------------------------------------------
@@ -202,37 +298,49 @@ if use_sbert_toggle:
 # ----------------------------------------------------------------------
 # HEADER
 # ----------------------------------------------------------------------
-st.title("🩺 MedFAQ Chatbot")
-st.caption(
-    f"Mencari jawaban dari {len(df):,} pasangan tanya-jawab medis "
-    f"({'Sentence-BERT + TF-IDF' if sbert_embeddings is not None else 'TF-IDF word + character'})."
-)
-st.info(
-    "⚠️ Informasi edukatif saja. Chatbot ini bukan pengganti diagnosis atau nasihat medis profesional.",
-    icon="⚠️",
-)
+mode_label = "Sentence-BERT + TF-IDF" if sbert_embeddings is not None else "TF-IDF word + character"
+focus_count = df["focus"].nunique()
 
-with st.expander("💡 Contoh pertanyaan"):
-    examples = [
-        "What are the symptoms of Parkinson's disease?",
-        "What are the treatments for asthma?",
-        "What causes breast cancer?",
-        "How can stroke be prevented?",
-    ]
-    cols = st.columns(2)
-    for i, ex in enumerate(examples):
-        if cols[i % 2].button(ex, key=f"ex_{i}"):
-            st.session_state.pending_query = ex
+st.markdown(f"""
+<div class="mf-header">
+    <div class="mf-wordmark"><span class="mf-mark"></span>MedFAQ</div>
+    <div class="mf-tagline">retrieval over a medical FAQ record — not a diagnosis</div>
+</div>
+<div class="mf-vitals">
+    <div class="mf-vital"><div class="label">records</div><div class="value">{len(df):,}</div></div>
+    <div class="mf-vital"><div class="label">topics</div><div class="value">{focus_count:,}</div></div>
+    <div class="mf-vital"><div class="label">mode</div><div class="value">{mode_label}</div></div>
+</div>
+<div class="mf-disclaimer">Informasi edukatif saja. Bukan pengganti diagnosis atau nasihat medis profesional.</div>
+""", unsafe_allow_html=True)
+
+examples = [
+    "What are the symptoms of Parkinson's disease?",
+    "What are the treatments for asthma?",
+    "What causes breast cancer?",
+    "How can stroke be prevented?",
+]
+cols = st.columns(4)
+for i, ex in enumerate(examples):
+    if cols[i].button(ex, key=f"ex_{i}"):
+        st.session_state.pending_query = ex
 
 # ----------------------------------------------------------------------
-# CHAT STATE & RIWAYAT
+# STATE & RIWAYAT (dirender sebagai entri chart bernomor)
 # ----------------------------------------------------------------------
-if "messages" not in st.session_state:
-    st.session_state.messages = []
+if "turns" not in st.session_state:
+    st.session_state.turns = []
 
-for msg in st.session_state.messages:
-    with st.chat_message(msg["role"]):
-        st.markdown(msg["content"])
+history_slot = st.container()
+
+
+def render_history():
+    with history_slot:
+        for i, t in enumerate(st.session_state.turns, start=1):
+            st.markdown(entry_html(i, t["question"], t["is_low"], t["body_html"]), unsafe_allow_html=True)
+
+
+render_history()
 
 # ----------------------------------------------------------------------
 # INPUT PENGGUNA
@@ -242,48 +350,50 @@ if "pending_query" in st.session_state:
     user_query = st.session_state.pop("pending_query")
 
 if user_query:
-    st.session_state.messages.append({"role": "user", "content": user_query})
-    with st.chat_message("user"):
-        st.markdown(user_query)
-
     matches = retrieve(
         user_query, df, word_vectorizer, char_vectorizer, word_matrix, char_matrix,
         sbert_model, sbert_embeddings, top_k=top_k,
     )
 
-    with st.chat_message("assistant"):
-        if matches.empty:
-            reply = "Maaf, saya tidak menemukan jawaban. Coba pertanyaan lain."
-            st.markdown(reply)
+    if matches.empty:
+        body_html = '<div class="mf-a-text">Belum ada jawaban yang cocok. Coba pertanyaan lain.</div>'
+        is_low = True
+    else:
+        best = matches.iloc[0]
+        score = float(best["score"])
+        is_low = score < threshold
+
+        if is_low:
+            body_html = (
+                f'<div class="mf-a-text">Belum cukup yakin dengan jawaban di dataset ini untuk pertanyaan tersebut.</div>'
+                f'<div class="mf-caution">Coba tulis ulang atau sebutkan nama penyakitnya secara eksplisit.</div>'
+                f'<div class="mf-meta"><span>match {score:.3f}</span></div>'
+            )
         else:
-            best = matches.iloc[0]
-            score = float(best["score"])
-            if score < threshold:
-                reply = (
-                    f"Saya tidak menemukan jawaban yang cukup relevan di dataset "
-                    f"(skor tertinggi: {score:.3f}). Coba tulis ulang pertanyaan atau sebutkan nama penyakitnya."
+            answer = escape(str(best["answer"])).replace("\n", "<br>")
+            topic = escape(str(best.get("focus", "")) or "tidak diketahui")
+            qtype = escape(str(best.get("question_type", "")) or "tidak diketahui")
+            source = str(best.get("source", "")).strip()
+            url = str(best.get("url", "")).strip()
+
+            meta_parts = [f"<span>focus: {topic}</span>", f"<span>type: {qtype}</span>", f"<span>match: {score:.3f}</span>"]
+            if source:
+                meta_parts.append(f"<span>source: {escape(source)}</span>")
+            if url.lower().startswith(("http://", "https://")):
+                meta_parts.append(f'<span><a href="{escape(url, quote=True)}" target="_blank" rel="noopener noreferrer">open reference ↗</a></span>')
+
+            body_html = f'<div class="mf-a-text">{answer}</div><div class="mf-meta">{"".join(meta_parts)}</div>'
+
+            if len(matches) > 1:
+                alt_items = "".join(
+                    f"<li>{escape(str(row['question']))} — {float(row['score']):.3f}</li>"
+                    for _, row in matches.iloc[1:].iterrows()
                 )
-                st.markdown(reply)
-            else:
-                answer = str(best["answer"])
-                topic = best.get("focus", "") or "Tidak diketahui"
-                qtype = best.get("question_type", "") or "Tidak diketahui"
-                source = str(best.get("source", "")).strip()
-                url = str(best.get("url", "")).strip()
+                body_html += (
+                    f'<details style="margin-top:8px;font-size:13px;color:var(--muted)">'
+                    f"<summary style='cursor:pointer'>Pertanyaan lain yang cocok</summary>"
+                    f"<ul>{alt_items}</ul></details>"
+                )
 
-                reply_lines = [answer, ""]
-                reply_lines.append(f"📌 **Topik:** {topic} &nbsp;|&nbsp; 🏷️ **Jenis:** {qtype} &nbsp;|&nbsp; 🎯 **Skor:** {score:.3f}")
-                if source:
-                    reply_lines.append(f"📚 **Sumber:** {source}")
-                if url.lower().startswith(("http://", "https://")):
-                    reply_lines.append(f"🔗 [Buka referensi sumber]({url})")
-
-                reply = "\n\n".join(reply_lines)
-                st.markdown(reply)
-
-                if len(matches) > 1:
-                    with st.expander("Lihat pertanyaan lain yang cocok"):
-                        for _, row in matches.iloc[1:].iterrows():
-                            st.markdown(f"- {row['question']}  (skor: {float(row['score']):.3f})")
-
-    st.session_state.messages.append({"role": "assistant", "content": reply})
+    st.session_state.turns.append({"question": user_query, "body_html": body_html, "is_low": is_low})
+    st.rerun()
